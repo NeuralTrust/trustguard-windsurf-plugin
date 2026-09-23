@@ -16,12 +16,12 @@ BASE_URL="${TRUSTGUARD_WINDSURF_DOWNLOAD_BASE:-https://github.com/NeuralTrust/tr
 BIN_DIR="${TRUSTGUARD_WINDSURF_BIN_DIR:-$HOME/.trustguard/bin}"
 
 # Per-platform SHA-256 of the release binaries (filled per release).
-SHA256_darwin_amd64=""
-SHA256_darwin_arm64=""
-SHA256_linux_amd64=""
-SHA256_linux_arm64=""
-SHA256_windows_amd64=""
-SHA256_windows_arm64=""
+SHA256_darwin_amd64="34b3d8da17d467b537d97da076b3bd9a31e79ccdb30a1ec57b72e08db71617d0"
+SHA256_darwin_arm64="b3286075b797886e9369eae264e4bd2b3650ff601f1232fa866fa993710e060b"
+SHA256_linux_amd64="33a0de822b34f8a4af2b40953cd4fd0bb7d3c745f7e6f85e51dfd8f937a221ef"
+SHA256_linux_arm64="d1d2ed34d4c5de2794e6a47a5736831ce5e020d90763fef4a5ed5b096464dd4d"
+SHA256_windows_amd64="a1bbd7474859c96d12b7dbb25b063acda4cdabdebeecf7b1b28c2f97d87d74c3"
+SHA256_windows_arm64="2f4f8cdacfbb34a4ea9f78d6411074b5450de434aa5128a90b56d3f7eca6882f"
 
 fail_open() {
     echo "trustguard-windsurf bootstrap: $1 — allowing without evaluation" >&2
