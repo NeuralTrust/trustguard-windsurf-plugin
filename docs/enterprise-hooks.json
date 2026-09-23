@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "pre_user_prompt": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\"",
+        "show_output": true
+      }
+    ],
+    "pre_run_command": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\"",
+        "show_output": true
+      }
+    ],
+    "pre_mcp_tool_use": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\"",
+        "show_output": true
+      }
+    ],
+    "post_mcp_tool_use": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\"",
+        "show_output": true
+      }
+    ],
+    "pre_write_code": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\"",
+        "show_output": true
+      }
+    ],
+    "pre_read_code": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\"",
+        "show_output": true
+      }
+    ],
+    "post_cascade_response": [
+      {
+        "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ProgramData\\TrustGuard\\windsurf-hooks\\trustguard-hook.ps1\""
+      }
+    ]
+  }
+}
