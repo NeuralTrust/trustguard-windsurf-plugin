@@ -14,8 +14,10 @@ $Sha256 = @{
     'arm64' = ''
 }
 
-# Cascade writes the event and closes stdin; it may span several lines.
-$Stdin = if ($InstallOnly) { $null } else { [Console]::In.ReadToEnd() }
+# Cascade writes the event and closes stdin; it may span several lines. The
+# trailing newline is dropped because PowerShell adds its own when it pipes
+# the string to the binary.
+$Stdin = if ($InstallOnly) { $null } else { [Console]::In.ReadToEnd().TrimEnd("`r", "`n") }
 
 function Invoke-Hook([string]$Exe) {
     $out = $Stdin | & $Exe hook
