@@ -98,15 +98,16 @@ type devinInput struct {
 
 	// PreToolUse / PostToolUse / PermissionRequest.
 	ToolName     string          `json:"tool_name"`
+	ToolUseID    string          `json:"tool_use_id"`
 	ToolInput    json.RawMessage `json:"tool_input"`
 	ToolResponse json.RawMessage `json:"tool_response"`
 
-	// Stop. The documented payload carries only stop_hook_active: the
-	// assistant response is not in it, which is the post_cascade_response
-	// coverage gap (see answerDevin). TranscriptPath is not documented for
-	// Devin Local; it is decoded so a spike can confirm whether it is present.
-	StopHookActive bool   `json:"stop_hook_active"`
-	TranscriptPath string `json:"transcript_path"`
+	// Stop. LastAssistantMessage holds the agent's response text. It is not in
+	// the published event reference but Devin Local sends it (captured with
+	// scripts/devin-capture.sh, see docs/devin-spike.md), and it is what keeps
+	// the response inspection Cascade did on post_cascade_response.
+	StopHookActive       bool   `json:"stop_hook_active"`
+	LastAssistantMessage string `json:"last_assistant_message"`
 }
 
 // devinToolResponse is the PostToolUse tool_response object.
@@ -249,6 +250,19 @@ func buildDevinEvaluateRequest(cfg Config, in devinInput, hookAttrs map[string]a
 		stampDevinTool(base.Attributes, in)
 		return base, true
 
+	case devinStop:
+		// The response the agent is about to end its turn with, evaluated as
+		// llm output exactly as post_cascade_response was on Cascade.
+		if strings.TrimSpace(in.LastAssistantMessage) == "" {
+			return base, false
+		}
+		base.Direction = "output"
+		base.Protocol = "llm"
+		base.Payload = map[string]any{
+			"messages": []any{map[string]any{"role": "assistant", "content": clip(in.LastAssistantMessage, cfg.MaxContentBytes)}},
+		}
+		return base, true
+
 	case devinPostToolUse:
 		text := devinToolResponseText(in.ToolResponse)
 		if strings.TrimSpace(text) == "" {
@@ -267,8 +281,8 @@ func buildDevinEvaluateRequest(cfg Config, in devinInput, hookAttrs map[string]a
 		return base, true
 	}
 
-	// Stop, PostCompaction, SessionStart and SessionEnd carry no content this
-	// binary evaluates. See answerDevin for the Stop coverage gap.
+	// PostCompaction, SessionStart and SessionEnd carry no content this binary
+	// evaluates.
 	return base, false
 }
 
@@ -346,10 +360,10 @@ func answerDevin(cfg Config, in devinInput, v verdict, stdout, stderr io.Writer)
 		return exitAllow
 
 	case devinStop:
-		// post_cascade_response inspected the assistant response. The Stop
-		// payload does not carry it, so output inspection of the response is
-		// not covered on Devin Local. Nothing is evaluated and nothing is
-		// returned; see docs for the gap.
+		// The response was evaluated, but the turn is over: blocking here does
+		// not retract what the developer already read, and a Stop block tells
+		// Devin to keep working, which loops when the condition cannot be
+		// satisfied. The finding is recorded in Activity, as it was on Cascade.
 		return exitAllow
 
 	case devinPostCompaction, devinSessionStart, devinSessionEnd:
@@ -436,7 +450,7 @@ func mcpServerName(hookToolName string) string {
 // devinContentFields are the payload fields that carry the evaluated content
 // itself. They travel in the payload, clipped; repeating them in attributes
 // would double the request and bypass the clip.
-var devinContentFields = []string{"prompt", "tool_input", "tool_response"}
+var devinContentFields = []string{"prompt", "tool_input", "tool_response", "last_assistant_message"}
 
 // devinAttributes is the stdin JSON as a map so every other field Devin sent
 // (including ones this binary does not decode) travels in attributes.devin.

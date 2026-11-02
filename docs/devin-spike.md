@@ -17,6 +17,52 @@ A fourth question has no script: **where Devin Local reads its MCP config**, now
 that Cascade's `~/.codeium/windsurf/mcp_config.json` may have moved. Note
 whatever you find.
 
+## Results — Devin CLI v3000.11.234, macOS, 2 November 2026
+
+Run on the Devin CLI (same contract as Devin Desktop), 27 events captured.
+
+**Tool names.** `read`, `grep`, `edit`, `exec` and `webfetch` — every one
+already routed by `devinToolCategories`. No correction needed. The table's
+remaining entries stay documentation-derived until a session exercises them.
+
+**`Stop` carries the response.** The payload has `last_assistant_message` with
+the agent's full response text, alongside `stop_hook_active`, `prompt_id` and
+`session_id`. The field is not in the published event reference. The binary now
+evaluates it as `llm` output, which keeps the coverage `post_cascade_response`
+had on Cascade; the earlier gap is closed.
+
+**Devin Local prompts for approval.** An edit raised *Allow Write(...)?* with
+Allow / Accept edits / Bypass / Deny. `PermissionRequest` fires with
+`tool_name`, `tool_input` and `tool_use_id`. So the Cascade premise — no
+approval prompt, therefore an *ask* verdict must block — does not hold here.
+Mapping *ask* onto this prompt is a follow-up, and documentation claiming
+neither agent asks must be corrected.
+
+**`SessionStart`, `SessionEnd` and `PermissionRequest` all exist**, so the
+optional session-correlation work is possible.
+
+**Devin Local reads the Cascade hooks file.** `/hooks` listed entries from
+both `~/.config/devin/config.json` and `~/.codeium/windsurf/hooks.json`, and
+each action visibly ran the hook twice. Wiring both hosts therefore evaluates
+every event twice. `install-hooks.py` now defaults to `--host devin` and warns
+on `both`.
+
+**Payload fields observed**
+
+| Event | Fields |
+|---|---|
+| `UserPromptSubmit` | `prompt`, `prompt_id`, `session_id` |
+| `PreToolUse` | `tool_name`, `tool_input`, `tool_use_id`, `prompt_id`, `session_id` |
+| `PostToolUse` | the above plus `tool_response` |
+| `PermissionRequest` | `tool_name`, `tool_input`, `tool_use_id`, `prompt_id`, `session_id` |
+| `Stop` | `last_assistant_message`, `stop_hook_active`, `prompt_id`, `session_id` |
+| `SessionStart` | `source`, `session_id` |
+| `SessionEnd` | `reason`, `prompt_id`, `session_id` |
+
+**Still open:** whether a block actually stops the action and in which mode
+(Check 2), whether system-level hook paths are honoured (Check 3), and where
+Devin Local reads its MCP config.
+
 ## Check 1 — capture the events
 
 Register the logging hook on every event. It appends each payload to a file and

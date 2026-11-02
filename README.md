@@ -33,10 +33,14 @@ Both block routes are documented and `devin_block_mode` selects between them
 (`json` by default, `exit2` for the Cascade-style route) so a deployment can
 switch without a rebuild.
 
-Unlike Cascade, Devin Local has a `PermissionRequest` event and lets a
+Unlike Cascade, Devin Local **does** prompt the developer for approval, has a
+`PermissionRequest` event carrying `tool_name` and `tool_input`, and lets a
 `PreToolUse` hook rewrite the call through `hookSpecificOutput.updatedInput`.
-Neither is used yet: an **Ask** verdict still blocks by default (`ask_action`)
-and a **Transform** verdict still blocks by default (`transform_action`).
+None of the three is used yet: an **Ask** verdict still blocks by default
+(`ask_action`) and a **Transform** verdict still blocks by default
+(`transform_action`). Mapping *ask* onto the real approval prompt, and
+*transform* onto `updatedInput`, is the obvious next step now that both are
+confirmed to exist (see [`docs/devin-spike.md`](./docs/devin-spike.md)).
 
 ## The Cascade hook contract
 
@@ -68,9 +72,13 @@ make install-hooks
 and merges absolute-path entries into both hosts' user-level config —
 `~/.config/devin/config.json` for Devin Local and
 `~/.codeium/windsurf/hooks.json` for Cascade — leaving any hooks already there
-untouched. `HOST=devin` or `HOST=cascade` wires only one of them, and
-`scripts/install-hooks.py --project DIR` writes a project-level
-`DIR/.devin/hooks.v1.json` instead of the user config. The binary downloads itself (checksum-verified)
+untouched. `scripts/install-hooks.py --project DIR` writes a project-level
+`DIR/.devin/hooks.v1.json` instead of the user config.
+
+`HOST` selects the agent and defaults to `devin`. **Devin Local loads the
+Cascade `hooks.json` as well**, so `HOST=both` makes it evaluate every event
+twice; use it only for a fleet where some machines still run Cascade and the
+duplicate evaluation is accepted. `HOST=cascade` is for those machines alone. The binary downloads itself (checksum-verified)
 on the first hook event. `make install-local` does the same with a local build.
 
 Then write `~/.trustguard/windsurf.json` (`chmod 600`) and reload Windsurf:
@@ -133,7 +141,7 @@ yet still reaches it rather than silently escaping coverage.
 | `PreToolUse` | `webfetch` | `mcp` tools/call | input |
 | `PreToolUse` | `mcp__<server>__<tool>` | `mcp` tools/call | input |
 | `PostToolUse` | any of the above | `mcp` result | output |
-| `Stop` | — | not evaluated | — |
+| `Stop` | — | `llm` (the assistant response) | output |
 
 Shell commands travel as `tools/call` like every other tool: as plain input
 TrustGuard would score a command as a user prompt (jailbreak, toxicity,
@@ -144,19 +152,30 @@ moderation) rather than as tool arguments (ENG-1620).
 for shell calls, the command line. `consumer_id` is still set per device or per
 user through MDM.
 
-The tool names above come from the Devin CLI documentation, which warns that
-the set varies by CLI mode, model and enabled integrations. They live in one
-table (`devinToolCategories` in `cli/hook_devin.go`) and nowhere else, so a
-capture from a real session is corrected in a single place.
+`read`, `grep`, `edit`, `exec` and `webfetch` were captured from a live Devin
+Local session and route correctly. The rest of the table comes from the Devin
+CLI documentation, which warns that the set varies by CLI mode, model and
+enabled integrations. Every name lives in one table (`devinToolCategories` in
+`cli/hook_devin.go`) and nowhere else, so a later capture is applied in a single
+place — see [`docs/devin-spike.md`](./docs/devin-spike.md) for the procedure.
+A name the table does not know is still evaluated, as a generic tool call.
 
-### Coverage gap: the assistant response
+### The assistant response
 
-Cascade's `post_cascade_response` carried the agent's response text, evaluated
-as `llm` output. The Devin `Stop` payload does not carry it — the documented
-field is `stop_hook_active` alone — so **output inspection of the assistant
-response is not covered on Devin Local**. The hook is registered and evaluates
-nothing; if the payload gains the response (or a transcript path), the gap
-closes with a binary upgrade and no config change.
+Cascade's `post_cascade_response` carried the agent's response text. The Devin
+event reference lists only `stop_hook_active` for `Stop`, but the payload Devin
+Local actually sends also carries `last_assistant_message` with the full
+response, so the same coverage is kept: the response is evaluated as `llm`
+output.
+
+It is recorded, never blocked. The turn is over by then, so a block would not
+retract what the developer has already read — and on `Stop` a block tells Devin
+to keep working, which loops when the condition cannot be satisfied. This
+mirrors what `post_cascade_response` did on Cascade.
+
+The field is not in the published reference, so a Devin release could rename it.
+If that happens the hook stops evaluating rather than misbehaving, and
+[`docs/devin-spike.md`](./docs/devin-spike.md) re-captures the payload.
 
 ## Event → evaluation mapping (Cascade)
 
@@ -203,7 +222,7 @@ variables winning unless managed mode locks the field:
 | [`hooks/`](./hooks/) | Bootstraps: `trustguard-hook.sh` (bash) and `trustguard-hook.ps1` (PowerShell) |
 | [`cli/`](./cli/) | `trustguard-windsurf` binary (Go, stdlib-only) |
 | [`scripts/`](./scripts/) | `install-hooks.py` (merges both hosts' configs), release plumbing |
-| [`docs/`](./docs/) | Enterprise system-level hook config examples, per host |
+| [`docs/`](./docs/) | Enterprise system-level hook config examples per host, and the Devin Local verification spike |
 | [`.github/workflows/`](./.github/workflows/) | CI + the release state machine that pins and publishes the platform binaries |
 
 ```bash
