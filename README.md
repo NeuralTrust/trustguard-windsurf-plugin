@@ -112,18 +112,16 @@ Then write `~/.trustguard/windsurf.json` (`chmod 600`) and reload Windsurf:
    (`/Library/Application Support/Windsurf/`, `/etc/windsurf/`,
    `C:\ProgramData\Windsurf\`); Devin Desktop reads both during the transition.
 
-   > **Unverified for Devin Local.** The Devin CLI documents project-level
-   > (`.devin/hooks.v1.json`, `.devin/config.json`) and user-level
-   > (`~/.config/devin/config.json`, `%APPDATA%\devin\config.json`) hook
-   > paths only. Whether Devin Local also reads the system-level paths above
-   > has to be confirmed on a real install. If it does not, an MDM deployment
-   > must write the user-level config per account, and the hooks are no longer
-   > undisableable without root.
-
-System-level hooks cannot be disabled without root. On the Enterprise plan the
-same hooks can be distributed from the team dashboard instead. With a managed
-`api_key`, `api_key`, `data_url` and `fail_mode` cannot be overridden from the
-user file or the environment.
+   > **No system-level hooks on Devin Local.** Neither
+   > `/Library/Application Support/Devin/hooks.json` nor `hooks.v1.json` is
+   > read by Devin Local; only the project-level (`.devin/`) and user-level
+   > (`~/.config/devin/config.json`) paths work, and Devin Local also reads
+   > the Cascade `~/.codeium/windsurf/hooks.json`. All of them sit in the
+   > developer's home directory, so **hooks on Devin Local can be removed
+   > without administrator rights**. Verified on Devin CLI v3000.11.234, see
+   > [`docs/devin-spike.md`](./docs/devin-spike.md). Deploy the user config per
+   > account by MDM and monitor coverage from Activity rather than relying on
+   > the hooks being undisableable; the paths above still apply to Cascade.
 
 ## Event → evaluation mapping (Devin Local)
 
