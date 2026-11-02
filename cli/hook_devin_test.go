@@ -166,20 +166,37 @@ func TestDevinPostToolUseFlagsTaintedResult(t *testing.T) {
 	}
 }
 
-func TestDevinStopIsNotEvaluated(t *testing.T) {
-	// The Stop payload does not carry the assistant response, so there is
-	// nothing to evaluate: the hook must stay silent rather than call the
-	// guard with an empty payload.
+func TestDevinStopEvaluatesTheAssistantResponse(t *testing.T) {
+	// Devin Local sends the response text on Stop (last_assistant_message),
+	// which is what preserves the inspection Cascade did on
+	// post_cascade_response.
+	srv, captured := stubGuard(t, blockResponse("pii", "dlp"))
+	res := invokeHook(t, testConfig(srv.URL), devinEvent(devinStop, map[string]any{
+		"stop_hook_active":       false,
+		"last_assistant_message": "the key is sk-live-41ab",
+	}))
+
+	if (*captured)["direction"] != "output" || (*captured)["protocol"] != "llm" {
+		t.Fatalf("the response must be evaluated as llm output: %v", *captured)
+	}
+	// After the fact: recorded, never blocked. A Stop block tells Devin to keep
+	// working, which loops.
+	if res.code != exitAllow || res.stdout != "" {
+		t.Fatalf("Stop must never block, got code %d stdout %q", res.code, res.stdout)
+	}
+}
+
+func TestDevinStopWithoutResponseSkipsEvaluate(t *testing.T) {
 	srv, captured := stubGuard(t, blockResponse("pii", "dlp"))
 	res := invokeHook(t, testConfig(srv.URL), devinEvent(devinStop, map[string]any{
 		"stop_hook_active": false,
 	}))
 
 	if len(*captured) != 0 {
-		t.Fatalf("Stop must not reach /v1/evaluate: %v", *captured)
+		t.Fatalf("an empty response must not reach /v1/evaluate: %v", *captured)
 	}
-	if res.code != exitAllow || res.stdout != "" {
-		t.Fatalf("Stop must be silent, got code %d stdout %q", res.code, res.stdout)
+	if res.code != exitAllow {
+		t.Fatalf("expected allow, got %d", res.code)
 	}
 }
 

@@ -3,8 +3,10 @@
 HOOKS_DIR ?= $(HOME)/.trustguard/windsurf-hooks
 HOOKS_JSON ?= $(HOME)/.codeium/windsurf/hooks.json
 DEVIN_CONFIG ?= $(HOME)/.config/devin/config.json
-# HOST selects which agent host to wire: cascade, devin or both.
-HOST ?= both
+# HOST selects which agent host to wire: devin (default), cascade or both.
+# Devin Local reads the Cascade hooks.json as well, so `both` evaluates every
+# event twice on a Devin Local machine — see docs/devin-spike.md.
+HOST ?= devin
 VERSION ?= dev
 
 build: ## Build the trustguard-windsurf hook binary into ./bin/
