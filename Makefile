@@ -2,6 +2,9 @@
 
 HOOKS_DIR ?= $(HOME)/.trustguard/windsurf-hooks
 HOOKS_JSON ?= $(HOME)/.codeium/windsurf/hooks.json
+DEVIN_CONFIG ?= $(HOME)/.config/devin/config.json
+# HOST selects which agent host to wire: cascade, devin or both.
+HOST ?= both
 VERSION ?= dev
 
 build: ## Build the trustguard-windsurf hook binary into ./bin/
@@ -29,8 +32,8 @@ install-hooks: ## Install the bootstraps and wire the user-level hooks.json
 	@mkdir -p "$(HOOKS_DIR)"
 	@cp hooks/trustguard-hook.sh hooks/trustguard-hook.ps1 "$(HOOKS_DIR)/"
 	@chmod 0755 "$(HOOKS_DIR)/trustguard-hook.sh"
-	@python3 scripts/install-hooks.py install "$(HOOKS_DIR)" "$(HOOKS_JSON)"
-	@echo "wired $(HOOKS_JSON) — reload Windsurf so Cascade picks the hooks up"
+	@python3 scripts/install-hooks.py install "$(HOOKS_DIR)" "$(HOOKS_JSON)" --host $(HOST) --devin-config "$(DEVIN_CONFIG)"
+	@echo "wired the hooks — reload Devin Desktop so it picks them up"
 
 install-local: build install-hooks ## Same as install-hooks, with a local build of the binary
 	@mkdir -p "$(HOME)/.trustguard/bin"
@@ -38,7 +41,7 @@ install-local: build install-hooks ## Same as install-hooks, with a local build 
 	@chmod 0755 "$(HOME)/.trustguard/bin/trustguard-windsurf"
 
 uninstall-local: ## Remove the TrustGuard entries and the local install
-	@python3 scripts/install-hooks.py uninstall "$(HOOKS_JSON)"
+	@python3 scripts/install-hooks.py uninstall "$(HOOKS_JSON)" --host $(HOST) --devin-config "$(DEVIN_CONFIG)"
 	@rm -rf "$(HOOKS_DIR)"
 	@rm -f "$(HOME)/.trustguard/bin/trustguard-windsurf"
 	@echo "removed local TrustGuard Windsurf install"

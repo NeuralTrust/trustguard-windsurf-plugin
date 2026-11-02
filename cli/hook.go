@@ -77,6 +77,13 @@ func runHook(stdin io.Reader, stdout, stderr io.Writer, cfg Config) (int, error)
 	if err := json.NewDecoder(io.LimitReader(stdin, 16<<20)).Decode(&raw); err != nil {
 		return 1, fmt.Errorf("decode hook input: %w", err)
 	}
+	// Devin Local (which replaced Cascade in Devin Desktop) keys its events on
+	// hook_event_name; Cascade keys them on agent_action_name. One build
+	// serves both hosts during the transition.
+	if devinEventName(raw) != "" {
+		return runDevinHook(raw, stdout, stderr, cfg)
+	}
+
 	var in hookInput
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return 1, fmt.Errorf("decode hook input: %w", err)

@@ -1,14 +1,42 @@
 # TrustGuard for Windsurf
 
-AI firewall for [Windsurf](https://windsurf.com) — now **Devin Desktop** — and
-its Cascade agent. One org collector, MDM-deployed: every developer is
-protected without a NeuralTrust account.
+AI firewall for [Windsurf](https://windsurf.com) — now **Devin Desktop** — on
+both of its agents: **Devin Local** (current) and **Cascade** (through July
+2026). One org collector, MDM-deployed: every developer is protected without a
+NeuralTrust account.
 
 Same model as the [Claude Code](https://github.com/NeuralTrust/trustguard-claude-code-plugin),
 [Codex](https://github.com/NeuralTrust/trustguard-codex-plugin) and
 [Gemini CLI](https://github.com/NeuralTrust/trustguard-gemini-cli-plugin)
-integrations: Cascade hooks call `trustguard-windsurf`, which maps each event to
-TrustGuard `POST /v1/evaluate` and answers with an exit code.
+integrations: the agent's hooks call `trustguard-windsurf`, which maps each
+event to TrustGuard `POST /v1/evaluate` and answers in that host's contract.
+
+One binary serves both hosts. It tells them apart by the event field the
+payload carries — `hook_event_name` is Devin Local, `agent_action_name` is
+Cascade — so a single install covers a fleet mid-migration.
+
+## The Devin Local hook contract
+
+Devin Local shares the [Devin CLI hook
+contract](https://docs.devin.ai/cli/extensibility/hooks/overview): the event
+arrives as JSON on stdin keyed by `hook_event_name`, and the hook answers with
+JSON on stdout or an exit code.
+
+| Answer | Effect |
+|---|---|
+| `{"decision":"block","reason":"…"}` on stdout | The action is blocked and the reason reaches the agent |
+| `hookSpecificOutput.additionalContext` | Text injected into the agent's context (allowed with a notice) |
+| exit `2` | The action is blocked, reason read from stderr |
+| exit `0`, no output | The action proceeds |
+
+Both block routes are documented and `devin_block_mode` selects between them
+(`json` by default, `exit2` for the Cascade-style route) so a deployment can
+switch without a rebuild.
+
+Unlike Cascade, Devin Local has a `PermissionRequest` event and lets a
+`PreToolUse` hook rewrite the call through `hookSpecificOutput.updatedInput`.
+Neither is used yet: an **Ask** verdict still blocks by default (`ask_action`)
+and a **Transform** verdict still blocks by default (`transform_action`).
 
 ## The Cascade hook contract
 
@@ -36,9 +64,13 @@ cd trustguard-windsurf-plugin
 make install-hooks
 ```
 
-`make install-hooks` copies the bootstraps to `~/.trustguard/windsurf-hooks/` and
-merges absolute-path entries into `~/.codeium/windsurf/hooks.json`, leaving any
-hooks already there untouched. The binary downloads itself (checksum-verified)
+`make install-hooks` copies the bootstraps to `~/.trustguard/windsurf-hooks/`
+and merges absolute-path entries into both hosts' user-level config —
+`~/.config/devin/config.json` for Devin Local and
+`~/.codeium/windsurf/hooks.json` for Cascade — leaving any hooks already there
+untouched. `HOST=devin` or `HOST=cascade` wires only one of them, and
+`scripts/install-hooks.py --project DIR` writes a project-level
+`DIR/.devin/hooks.v1.json` instead of the user config. The binary downloads itself (checksum-verified)
 on the first hook event. `make install-local` does the same with a local build.
 
 Then write `~/.trustguard/windsurf.json` (`chmod 600`) and reload Windsurf:
@@ -60,8 +92,10 @@ Then write `~/.trustguard/windsurf.json` (`chmod 600`) and reload Windsurf:
    - macOS: `/Library/Application Support/TrustGuard/windsurf.json`
    - Linux: `/etc/trustguard/windsurf.json`
    - Windows: `%ProgramData%\TrustGuard\windsurf.json`
-3. Deploy the system-level `hooks.json` (see
-   [`docs/enterprise-hooks.json`](./docs/enterprise-hooks.json)):
+3. Deploy the hooks. For Devin Local, see
+   [`docs/enterprise-hooks-devin.json`](./docs/enterprise-hooks-devin.json);
+   for Cascade, [`docs/enterprise-hooks.json`](./docs/enterprise-hooks.json).
+   The Cascade system-level paths are:
    - macOS: `/Library/Application Support/Devin/hooks.json`
    - Linux: `/etc/devin/hooks.json`
    - Windows: `C:\ProgramData\Devin\hooks.json`
@@ -70,12 +104,61 @@ Then write `~/.trustguard/windsurf.json` (`chmod 600`) and reload Windsurf:
    (`/Library/Application Support/Windsurf/`, `/etc/windsurf/`,
    `C:\ProgramData\Windsurf\`); Devin Desktop reads both during the transition.
 
+   > **Unverified for Devin Local.** The Devin CLI documents project-level
+   > (`.devin/hooks.v1.json`, `.devin/config.json`) and user-level
+   > (`~/.config/devin/config.json`, `%APPDATA%\devin\config.json`) hook
+   > paths only. Whether Devin Local also reads the system-level paths above
+   > has to be confirmed on a real install. If it does not, an MDM deployment
+   > must write the user-level config per account, and the hooks are no longer
+   > undisableable without root.
+
 System-level hooks cannot be disabled without root. On the Enterprise plan the
 same hooks can be distributed from the team dashboard instead. With a managed
 `api_key`, `api_key`, `data_url` and `fail_mode` cannot be overridden from the
 user file or the environment.
 
-## Event → evaluation mapping
+## Event → evaluation mapping (Devin Local)
+
+Devin Local sends one `PreToolUse`/`PostToolUse` event for every tool and names
+the tool in `tool_name`; the binary routes it to the matching check. The
+registered matcher is empty on purpose, so a tool name the binary does not know
+yet still reaches it rather than silently escaping coverage.
+
+| Devin event | `tool_name` | TrustGuard protocol | Direction |
+|---|---|---|---|
+| `UserPromptSubmit` | — | `llm` | input |
+| `PreToolUse` | `exec`, `get_output`, `write_to_process`, `kill_shell` | `mcp` tools/call | input |
+| `PreToolUse` | `write`, `edit`, `apply_patch`, `notebook_edit` | `mcp` tools/call | input |
+| `PreToolUse` | `read`, `grep`, `glob`, `notebook_read` | `mcp` tools/call | input |
+| `PreToolUse` | `webfetch` | `mcp` tools/call | input |
+| `PreToolUse` | `mcp__<server>__<tool>` | `mcp` tools/call | input |
+| `PostToolUse` | any of the above | `mcp` result | output |
+| `Stop` | — | not evaluated | — |
+
+Shell commands travel as `tools/call` like every other tool: as plain input
+TrustGuard would score a command as a user prompt (jailbreak, toxicity,
+moderation) rather than as tool arguments (ENG-1620).
+
+`session_id` is Devin's own; `prompt_id` and every other field travel in
+`attributes.devin`. `attributes.tool` carries the tool name, its category and,
+for shell calls, the command line. `consumer_id` is still set per device or per
+user through MDM.
+
+The tool names above come from the Devin CLI documentation, which warns that
+the set varies by CLI mode, model and enabled integrations. They live in one
+table (`devinToolCategories` in `cli/hook_devin.go`) and nowhere else, so a
+capture from a real session is corrected in a single place.
+
+### Coverage gap: the assistant response
+
+Cascade's `post_cascade_response` carried the agent's response text, evaluated
+as `llm` output. The Devin `Stop` payload does not carry it — the documented
+field is `stop_hook_active` alone — so **output inspection of the assistant
+response is not covered on Devin Local**. The hook is registered and evaluates
+nothing; if the payload gains the response (or a transcript path), the gap
+closes with a binary upgrade and no config change.
+
+## Event → evaluation mapping (Cascade)
 
 | Cascade event | TrustGuard protocol | Direction | Verdict |
 |---|---|---|---|
@@ -110,7 +193,8 @@ variables winning unless managed mode locks the field:
 | `timeout_ms` | `TRUSTGUARD_TIMEOUT_MS` | `5000` | Per-call evaluate timeout |
 | `max_content_bytes` | — | `262144` | Tool result and response bytes sent to the guard |
 | `consumer_id` | `TRUSTGUARD_CONSUMER_ID` | — | Sent as `consumer_id` |
-| `events` | — | all on | Disable events, e.g. `{"pre_read_code": false}` |
+| `devin_block_mode` | `TRUSTGUARD_DEVIN_BLOCK_MODE` | `json` | How Devin Local is told to block: `json` (stdout decision) or `exit2` |
+| `events` | — | all on | Disable events, e.g. `{"pre_read_code": false}`. Cascade event names keep working on Devin Local: `pre_read_code` disables `PreToolUse` for read tools, and so on |
 
 ## Repository layout
 
@@ -118,8 +202,8 @@ variables winning unless managed mode locks the field:
 |---|---|
 | [`hooks/`](./hooks/) | Bootstraps: `trustguard-hook.sh` (bash) and `trustguard-hook.ps1` (PowerShell) |
 | [`cli/`](./cli/) | `trustguard-windsurf` binary (Go, stdlib-only) |
-| [`scripts/`](./scripts/) | `install-hooks.py` (merges `hooks.json`), release plumbing |
-| [`docs/`](./docs/) | Enterprise system-level `hooks.json` example |
+| [`scripts/`](./scripts/) | `install-hooks.py` (merges both hosts' configs), release plumbing |
+| [`docs/`](./docs/) | Enterprise system-level hook config examples, per host |
 | [`.github/workflows/`](./.github/workflows/) | CI + the release state machine that pins and publishes the platform binaries |
 
 ```bash
@@ -146,6 +230,17 @@ publish job pushes `release/v0.1.0` with the real ones; merging that publishes
 `v0.1.0`.
 
 ## Verify
+
+Devin Local:
+
+```bash
+echo '{"hook_event_name":"PreToolUse","tool_name":"exec","tool_input":{"command":"echo hi"}}' \
+  | ./bin/trustguard-windsurf hook
+```
+
+No output means allow; `{"decision":"block","reason":"…"}` means block.
+
+Cascade:
 
 ```bash
 echo '{"agent_action_name":"pre_run_command","trajectory_id":"t1","tool_info":{"command_line":"echo hi"}}' \

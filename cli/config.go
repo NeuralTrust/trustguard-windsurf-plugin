@@ -41,6 +41,11 @@ type Config struct {
 	// ConsumerID is sent as consumer_id. Cascade does not put the user in the
 	// hook payload, so MDM sets this per device or per user.
 	ConsumerID string `json:"consumer_id"`
+	// DevinBlockMode selects how a block is returned to Devin Local: "json"
+	// (default) answers with decision:"block" on stdout, "exit2" writes the
+	// reason to stderr and exits 2. Both are documented; which one Devin
+	// honours per event is confirmed by the migration spike.
+	DevinBlockMode string `json:"devin_block_mode"`
 	// Events disables individual hook events, e.g. {"pre_read_code": false}.
 	Events map[string]bool `json:"events"`
 
@@ -56,6 +61,8 @@ const (
 	defaultAskAction       = "deny"
 	defaultTransformAction = "deny"
 	defaultTimeoutMS       = 5000
+	blockModeJSON          = "json"
+	blockModeExit2         = "exit2"
 	defaultMaxContentBytes = 256 * 1024
 )
 
@@ -145,6 +152,9 @@ func applyOverlay(cfg *Config, overlay Config) {
 	if overlay.ConsumerID != "" {
 		cfg.ConsumerID = overlay.ConsumerID
 	}
+	if overlay.DevinBlockMode != "" {
+		cfg.DevinBlockMode = overlay.DevinBlockMode
+	}
 	if overlay.Events != nil {
 		cfg.Events = overlay.Events
 	}
@@ -174,6 +184,9 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("TRUSTGUARD_CONSUMER_ID"); v != "" {
 		cfg.ConsumerID = v
 	}
+	if v := os.Getenv("TRUSTGUARD_DEVIN_BLOCK_MODE"); v != "" {
+		cfg.DevinBlockMode = v
+	}
 }
 
 func (c *Config) applyDefaults() {
@@ -200,6 +213,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.MaxContentBytes <= 0 {
 		c.MaxContentBytes = defaultMaxContentBytes
+	}
+	if c.DevinBlockMode != blockModeExit2 {
+		c.DevinBlockMode = blockModeJSON
 	}
 }
 
