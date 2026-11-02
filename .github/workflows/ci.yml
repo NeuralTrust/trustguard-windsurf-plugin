@@ -31,7 +31,22 @@ jobs:
       - name: Bootstrap script syntax
         run: sh -n hooks/trustguard-hook.sh
 
-      - name: hooks.json installer
+      - name: Hook installer, per host
         run: |
-          python3 scripts/install-hooks.py install hooks "$RUNNER_TEMP/hooks.json"
+          # Cascade: seven events under a "hooks" key.
+          python3 scripts/install-hooks.py install hooks "$RUNNER_TEMP/hooks.json" --host cascade
           python3 -c "import json,sys; d=json.load(open(sys.argv[1]))['hooks']; assert len(d)==7, list(d)" "$RUNNER_TEMP/hooks.json"
+
+          # Devin Local, user level: four events under a "hooks" key. This is
+          # the default host, because Devin Local reads the Cascade file too
+          # and wiring both would evaluate every event twice.
+          python3 scripts/install-hooks.py install hooks --devin-config "$RUNNER_TEMP/devin.json"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1]))['hooks']; assert len(d)==4, list(d)" "$RUNNER_TEMP/devin.json"
+
+          # Devin Local, project level: the file itself is the hooks object.
+          python3 scripts/install-hooks.py install hooks --devin-config "$RUNNER_TEMP/devin.json" --project "$RUNNER_TEMP/proj"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert len(d)==4, list(d)" "$RUNNER_TEMP/proj/.devin/hooks.v1.json"
+
+          # Uninstall leaves nothing of ours behind.
+          python3 scripts/install-hooks.py uninstall "$RUNNER_TEMP/hooks.json" --host both --devin-config "$RUNNER_TEMP/devin.json"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])).get('hooks',{}); assert not d, d" "$RUNNER_TEMP/devin.json"
