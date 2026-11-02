@@ -1,0 +1,50 @@
+{
+  "UserPromptSubmit": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+          "timeout": 30
+        }
+      ]
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+          "timeout": 30
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+          "timeout": 30
+        }
+      ]
+    }
+  ],
+  "Stop": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash \"/Library/Application Support/TrustGuard/windsurf-hooks/trustguard-hook.sh\"",
+          "timeout": 30
+        }
+      ]
+    }
+  ]
+}
