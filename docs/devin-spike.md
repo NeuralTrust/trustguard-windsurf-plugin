@@ -13,9 +13,10 @@ spike answers them in about fifteen minutes on any machine running Devin Local
 | Which block route Devin honours | Both a stdout `decision` and exit code 2 are documented; `devin_block_mode` ships `json` by default | Check 2 |
 | Whether system-level hook paths work | An MDM deployment that developers cannot disable depends on it. Devin documents project-level and user-level paths only | Check 3 |
 
-A fourth question has no script: **where Devin Local reads its MCP config**, now
-that Cascade's `~/.codeium/windsurf/mcp_config.json` may have moved. Note
-whatever you find.
+A fourth question has no script: **where Devin Local reads its MCP config**.
+Write a server with an unreachable URL into the path under test and look for it
+in `/mcp` — it shows up as a failed connection, which is enough to prove the
+file was read.
 
 ## Results — Devin CLI v3000.11.234, macOS, 2 November 2026
 
@@ -76,7 +77,13 @@ user config and the Cascade hooks file — live in the user's home directory and
 need no privileges to edit. This is a change from the Cascade deployment model
 and from what the console card used to claim.
 
-**Still open:** where Devin Local reads its MCP config.
+**The MCP config carries over.** A probe server written to the Cascade path
+`~/.codeium/windsurf/mcp_config.json` appeared in `/mcp`, so Devin Local reads
+it: an existing TrustGate MCP setup keeps working with no migration. Devin also
+has its own `.devin/mcp_config.json` (project) and `~/.config/devin/` (user)
+locations.
+
+Nothing from the question list above is left open.
 
 ## Check 1 — capture the events
 
