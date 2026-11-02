@@ -211,8 +211,9 @@ jobs:
             --notes "$(cat <<EOF
           Automated release from \`main\`.
 
-          TrustGuard integration binary for Windsurf Cascade hooks. Verify
-          downloads against \`SHA256SUMS\`; the hook bootstraps on this tag are
-          pinned to the same hashes.
+          TrustGuard integration binary for Windsurf (Devin Desktop) hooks, on
+          both the Devin Local and Cascade agents. Verify downloads against
+          \`SHA256SUMS\`; the hook bootstraps on this tag are pinned to the same
+          hashes.
           EOF
           )"
