@@ -59,9 +59,24 @@ on `both`.
 | `SessionStart` | `source`, `session_id` |
 | `SessionEnd` | `reason`, `prompt_id`, `session_id` |
 
-**Still open:** whether a block actually stops the action and in which mode
-(Check 2), whether system-level hook paths are honoured (Check 3), and where
-Devin Local reads its MCP config.
+**Blocking works through the JSON route.** A hook answering
+`{"decision":"block","reason":"…"}` on stdout stopped the call — Devin printed
+`Tool rejected: <reason>` and the agent repeated the reason and explained it
+could not proceed. So the reason reaches the model, and `devin_block_mode`
+keeps `json` as its default. The `exit2` route was not needed and stays
+available as a fallback.
+
+**No system-level hook path is honoured.** With the user config moved aside,
+neither `/Library/Application Support/Devin/hooks.json` (a `{"hooks": {…}}`
+object, the ENG-1639 shape) nor `/Library/Application Support/Devin/hooks.v1.json`
+(the bare hooks object) was loaded; `/hooks` listed only the entries from
+`~/.codeium/windsurf/hooks.json`. **An MDM deployment on Devin Local cannot
+place hooks a developer is unable to remove.** Both paths that do work — the
+user config and the Cascade hooks file — live in the user's home directory and
+need no privileges to edit. This is a change from the Cascade deployment model
+and from what the console card used to claim.
+
+**Still open:** where Devin Local reads its MCP config.
 
 ## Check 1 — capture the events
 
