@@ -11,17 +11,17 @@
 # The VERSION and SHA256_* table are updated per release.
 set -u
 
-VERSION="0.1.1"
+VERSION="0.1.2"
 BASE_URL="${TRUSTGUARD_WINDSURF_DOWNLOAD_BASE:-https://github.com/NeuralTrust/trustguard-windsurf-plugin/releases/download}"
 BIN_DIR="${TRUSTGUARD_WINDSURF_BIN_DIR:-$HOME/.trustguard/bin}"
 
 # Per-platform SHA-256 of the release binaries (filled per release).
-SHA256_darwin_amd64="1b1c8a5e933054ebab25d9c55592da992364e50fca4bb179cbefa89e1bcc376d"
-SHA256_darwin_arm64="9790218cbf6ad95ce525c67d9b7ef0f7dd97ecbcff4f462b169c2b19d49baf33"
-SHA256_linux_amd64="6a09fadb8411b40e330e875b1a5b4777c7dff91becdcdcc51c2eb18e280b2b31"
-SHA256_linux_arm64="94d608a21f8d3a31e51b77a383d8bcbd707762606f0b41f2580715a376148488"
-SHA256_windows_amd64="462c369c3343d38dc3d77e7b8ed605faf02bd5bc65b23a3b6ce62bdd25ba521f"
-SHA256_windows_arm64="b4ae1bb31e0d9ab0116a544686efea98168b1aef4dcb5773a945b1da3084bfcc"
+SHA256_darwin_amd64="ea73a72363a5644c85620452bf2f17b0ee889ca466f73e3194e32fa8aebbaa05"
+SHA256_darwin_arm64="2a23b154f9f35810da7e8172cfd43f8f71315391d1887362d26f01f7eccc3577"
+SHA256_linux_amd64="b2f89355a523634d7564b71fb62f23bd404cbc23dadc1b14c180662cc293c633"
+SHA256_linux_arm64="faa53f20a2dfe63abe74ce177133c4a2e5e75dd8abaeeaf3082939c4d381385f"
+SHA256_windows_amd64="5f58bca69e613f6dddb1fe99d1f0e09d809bf928b5ffc4f457568615f2df7bbf"
+SHA256_windows_arm64="ef78632621a728f3ed63837494f53338f1614c40ab6752cce013944147f80a84"
 
 fail_open() {
     echo "trustguard-windsurf bootstrap: $1 — allowing without evaluation" >&2
