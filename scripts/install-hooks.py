@@ -23,8 +23,15 @@ ever added or replaced; every other entry is left where it was.
     install-hooks.py install HOOKS_DIR [CASCADE_JSON] [options]
     install-hooks.py uninstall [CASCADE_JSON] [options]
 
+Devin Local loads BOTH files: its own config and the Cascade hooks.json
+(confirmed with /hooks, see docs/devin-spike.md). Wiring both on a machine
+running Devin Local therefore evaluates every event twice. The default is
+`devin` for that reason; `cascade` is for machines still on the Cascade agent,
+and `both` is only for a fleet where some machines run each and the duplicate
+evaluation is accepted.
+
 Options:
-    --host cascade|devin|both   which host to wire (default: both)
+    --host devin|cascade|both   which host to wire (default: devin)
     --devin-config PATH         Devin user config (default: ~/.config/devin/config.json)
     --project DIR               also write DIR/.devin/hooks.v1.json
 """
@@ -199,7 +206,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("action", choices=["install", "uninstall"])
     parser.add_argument("hooks_dir", nargs="?")
     parser.add_argument("cascade_json", nargs="?")
-    parser.add_argument("--host", choices=["cascade", "devin", "both"], default="both")
+    parser.add_argument("--host", choices=["devin", "cascade", "both"], default="devin")
     parser.add_argument("--devin-config")
     parser.add_argument("--project")
     parser.add_argument("-h", "--help", action="store_true")
@@ -222,6 +229,13 @@ def main() -> None:
     cascade_json = Path(args.cascade_json).expanduser() if args.cascade_json else DEFAULT_CASCADE_JSON
     devin_config = Path(args.devin_config).expanduser() if args.devin_config else DEFAULT_DEVIN_CONFIG
     project_hooks = Path(args.project).expanduser() / ".devin" / "hooks.v1.json" if args.project else None
+
+    if args.host == "both":
+        print(
+            "warning: Devin Local reads the Cascade hooks.json too, so wiring both "
+            "hosts evaluates every event twice on a Devin Local machine",
+            file=sys.stderr,
+        )
 
     if args.action == "install":
         if not args.hooks_dir:
