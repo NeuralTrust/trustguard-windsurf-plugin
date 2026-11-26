@@ -184,7 +184,7 @@ If that happens the hook stops evaluating rather than misbehaving, and
 | `pre_mcp_tool_use` | `mcp` tools/call | input | Block with exit 2. `attributes.mcp.server` names the server |
 | `pre_write_code` | `mcp` tools/call `write_code` with `file_path` and `edits` | input | Block with exit 2 |
 | `pre_read_code` | `mcp` tools/call `read_code` with `file_path` | input | Block with exit 2 |
-| `post_mcp_tool_use` | `mcp` result, one text entry per content block | output | Cannot undo the call. On a block the agent is told to treat the result as untrusted |
+| `post_mcp_tool_use` | `mcp` result, sent as its content blocks | output | Cannot undo the call. On a block the agent is told to treat the result as untrusted |
 | `post_cascade_response` | `llm` | output | Recorded in Activity only (asynchronous hook) |
 
 `post_run_command` carries no command output, so it is not evaluated.

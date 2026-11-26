@@ -264,13 +264,23 @@ func buildDevinEvaluateRequest(cfg Config, in devinInput, hookAttrs map[string]a
 		return base, true
 
 	case devinPostToolUse:
-		blocks := clipBlocks(devinToolResponseBlocks(in.ToolResponse), cfg.MaxContentBytes)
-		if allBlank(blocks) {
+		text := devinToolResponseText(in.ToolResponse)
+		if strings.TrimSpace(text) == "" {
 			return base, false
 		}
 		base.Direction = "output"
 		base.Protocol = "mcp"
-		base.Payload = resultPayload(blocks)
+		if categoryOf(in.ToolName) == catMCP {
+			base.Payload = resultPayload(text, in.ToolResponse, cfg.MaxContentBytes)
+		} else {
+			base.Payload = map[string]any{
+				"jsonrpc": "2.0",
+				"id":      1,
+				"result": map[string]any{
+					"content": []any{map[string]any{"type": "text", "text": clip(text, cfg.MaxContentBytes)}},
+				},
+			}
+		}
 		stampDevinTool(base.Attributes, in)
 		return base, true
 	}
@@ -312,30 +322,24 @@ func devinToolInputString(raw json.RawMessage, key string) string {
 	return ""
 }
 
-// devinToolResponseBlocks is the evaluated text of a tool result. MCP content
-// is sent as its original blocks, as TrustGate scores it; otherwise the output of a
-// structured response, a bare string as is, anything else as compact JSON.
-func devinToolResponseBlocks(raw json.RawMessage) []json.RawMessage {
+// devinToolResponseText is the evaluated text of a tool result: the output of
+// a structured response, a bare string as is, anything else as compact JSON so
+// structured results stay inspectable.
+func devinToolResponseText(raw json.RawMessage) string {
 	if len(raw) == 0 || string(raw) == "null" {
-		return nil
-	}
-	if blocks := contentBlocks(raw); blocks != nil {
-		return blocks
+		return ""
 	}
 	var asString string
 	if err := json.Unmarshal(raw, &asString); err == nil {
-		if blocks := contentBlocks(json.RawMessage(strings.TrimSpace(asString))); blocks != nil {
-			return blocks
-		}
-		return []json.RawMessage{textBlock(asString)}
+		return asString
 	}
 	var structured devinToolResponse
 	if err := json.Unmarshal(raw, &structured); err == nil {
 		if text := strings.TrimSpace(structured.Output + "\n" + structured.Error); text != "" {
-			return []json.RawMessage{textBlock(text)}
+			return text
 		}
 	}
-	return []json.RawMessage{textBlock(strings.TrimSpace(string(raw)))}
+	return strings.TrimSpace(string(raw))
 }
 
 // answerDevin writes the verdict in the Devin contract and returns the exit
