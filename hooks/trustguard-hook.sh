@@ -16,12 +16,12 @@ BASE_URL="${TRUSTGUARD_WINDSURF_DOWNLOAD_BASE:-https://github.com/NeuralTrust/tr
 BIN_DIR="${TRUSTGUARD_WINDSURF_BIN_DIR:-$HOME/.trustguard/bin}"
 
 # Per-platform SHA-256 of the release binaries (filled per release).
-SHA256_darwin_amd64="4a6daf819c68095dd49cf8e6ee2ec142ae744d1d16ba2b5f9e27060af463f393"
-SHA256_darwin_arm64="6c2f3743086ca1fbd2d4d75a2034cd2c9e78f5bfeeb7aa3da17ac4e202a9c38d"
-SHA256_linux_amd64="fa23d6f0d1bfd33a5571041122d6563f6b1396f68a22fbfb458f42d32dabc12b"
-SHA256_linux_arm64="d70c7b07d85388483819cb9161ecf4c8e1794fa64e264b1f62641b8250f823c8"
-SHA256_windows_amd64="ce3d3de463983153d1d22f58f5768360765d73dbc4320f98e539999102c01fbb"
-SHA256_windows_arm64="1b0de931c67cbbc4b1f38a010ad4890ecf10b1188aa94132442cf6bb359374a5"
+SHA256_darwin_amd64="cebc52adfc7e151a130a0071b8765df402c0993f894423443f709adab89d927b"
+SHA256_darwin_arm64="0f492345ffd58038b8fb87b79c3593fc7ad4ba57259a70578477e198549389f3"
+SHA256_linux_amd64="b2fb370966513b75266997cc877071fe24545841601a875748fd517a9f92ed5a"
+SHA256_linux_arm64="cae43cf97873e8cf852da4f8bd3dd341856cf5fd0761eed94d9294217cc3d8db"
+SHA256_windows_amd64="c7bce7f45a925e7e53c429458bf4da192c9d9b3e7455fc54c63e2dbd3efd5367"
+SHA256_windows_arm64="6fa991af0929ff52203836f6c42aa7465df9293acc5c48b6653985f3b5832762"
 
 fail_open() {
     echo "trustguard-windsurf bootstrap: $1 — allowing without evaluation" >&2
