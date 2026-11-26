@@ -156,8 +156,10 @@ func buildEvaluateRequest(cfg Config, in hookInput, info toolInfo, hookAttrs map
 		if cmd == "" {
 			return base, false
 		}
-		base.Protocol = "all"
-		base.Payload = map[string]any{"input": cmd}
+		// As plain input the command would be scored as a user prompt; as
+		// tool arguments it matches what the LLM route sees.
+		base.Protocol = "mcp"
+		base.Payload = toolsCall("run_command", map[string]any{"command": cmd})
 		stampTool(base.Attributes, "run_command", cmd)
 		return base, true
 
