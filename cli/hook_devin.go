@@ -270,12 +270,16 @@ func buildDevinEvaluateRequest(cfg Config, in devinInput, hookAttrs map[string]a
 		}
 		base.Direction = "output"
 		base.Protocol = "mcp"
-		base.Payload = map[string]any{
-			"jsonrpc": "2.0",
-			"id":      1,
-			"result": map[string]any{
-				"content": []any{map[string]any{"type": "text", "text": clip(text, cfg.MaxContentBytes)}},
-			},
+		if categoryOf(in.ToolName) == catMCP {
+			base.Payload = resultPayload(text, in.ToolResponse, cfg.MaxContentBytes)
+		} else {
+			base.Payload = map[string]any{
+				"jsonrpc": "2.0",
+				"id":      1,
+				"result": map[string]any{
+					"content": []any{map[string]any{"type": "text", "text": clip(text, cfg.MaxContentBytes)}},
+				},
+			}
 		}
 		stampDevinTool(base.Attributes, in)
 		return base, true
