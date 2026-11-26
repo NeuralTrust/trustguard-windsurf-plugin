@@ -313,29 +313,29 @@ func devinToolInputString(raw json.RawMessage, key string) string {
 }
 
 // devinToolResponseBlocks is the evaluated text of a tool result. MCP content
-// is split into its blocks as TrustGate scores it; otherwise the output of a
+// is sent as its original blocks, as TrustGate scores it; otherwise the output of a
 // structured response, a bare string as is, anything else as compact JSON.
-func devinToolResponseBlocks(raw json.RawMessage) []string {
+func devinToolResponseBlocks(raw json.RawMessage) []json.RawMessage {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil
 	}
-	if blocks, ok := contentBlocks(raw); ok {
+	if blocks := contentBlocks(raw); blocks != nil {
 		return blocks
 	}
 	var asString string
 	if err := json.Unmarshal(raw, &asString); err == nil {
-		if blocks, ok := contentBlocks(json.RawMessage(strings.TrimSpace(asString))); ok {
+		if blocks := contentBlocks(json.RawMessage(strings.TrimSpace(asString))); blocks != nil {
 			return blocks
 		}
-		return []string{asString}
+		return []json.RawMessage{textBlock(asString)}
 	}
 	var structured devinToolResponse
 	if err := json.Unmarshal(raw, &structured); err == nil {
 		if text := strings.TrimSpace(structured.Output + "\n" + structured.Error); text != "" {
-			return []string{text}
+			return []json.RawMessage{textBlock(text)}
 		}
 	}
-	return []string{strings.TrimSpace(string(raw))}
+	return []json.RawMessage{textBlock(strings.TrimSpace(string(raw)))}
 }
 
 // answerDevin writes the verdict in the Devin contract and returns the exit
