@@ -7,11 +7,11 @@
 
 param([switch]$InstallOnly)
 
-$Version = '0.1.2'
+$Version = '0.1.3'
 
 $Sha256 = @{
-    'amd64' = 'c7bce7f45a925e7e53c429458bf4da192c9d9b3e7455fc54c63e2dbd3efd5367'
-    'arm64' = '6fa991af0929ff52203836f6c42aa7465df9293acc5c48b6653985f3b5832762'
+    'amd64' = 'd8978bdc90930a9297294d251b407370bd26e0df91769d87024259c018960529'
+    'arm64' = 'b3508610fbb546d214603b22c11b15664922ab45058f62a2914d9da13b806266'
 }
 
 # Cascade writes the event and closes stdin; it may span several lines. The
