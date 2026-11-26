@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"unicode/utf8"
 )
 
 // Cascade hook events this binary evaluates. Pre-hooks can block with exit
@@ -192,19 +194,13 @@ func buildEvaluateRequest(cfg Config, in hookInput, info toolInfo, hookAttrs map
 		return base, true
 
 	case eventPostMCPToolUse:
-		text := resultText(info.MCPResult)
-		if strings.TrimSpace(text) == "" {
+		blocks := clipBlocks(resultBlocks(info.MCPResult), cfg.MaxContentBytes)
+		if allBlank(blocks) {
 			return base, false
 		}
 		base.Direction = "output"
 		base.Protocol = "mcp"
-		base.Payload = map[string]any{
-			"jsonrpc": "2.0",
-			"id":      1,
-			"result": map[string]any{
-				"content": []any{map[string]any{"type": "text", "text": clip(text, cfg.MaxContentBytes)}},
-			},
-		}
+		base.Payload = resultPayload(blocks)
 		stampTool(base.Attributes, info.MCPToolName, "")
 		stampMCPServer(base.Attributes, info.MCPServerName)
 		return base, true
@@ -258,17 +254,99 @@ func decodeJSON(raw json.RawMessage) any {
 	return v
 }
 
-// resultText is the MCP result as text: a string as is, anything else as
-// compact JSON so structured results stay inspectable.
-func resultText(raw json.RawMessage) string {
+// resultBlocks splits an MCP result into the text blocks the model saw, so each
+// is scored as TrustGate scores it. A string is one block unless it is itself
+// MCP content; other shapes stay one compact JSON block.
+func resultBlocks(raw json.RawMessage) []string {
+	raw = json.RawMessage(strings.TrimSpace(string(raw)))
 	if len(raw) == 0 || string(raw) == "null" {
-		return ""
+		return nil
 	}
 	var asString string
 	if err := json.Unmarshal(raw, &asString); err == nil {
-		return asString
+		if blocks, ok := contentBlocks(json.RawMessage(strings.TrimSpace(asString))); ok {
+			return blocks
+		}
+		return []string{asString}
 	}
-	return strings.TrimSpace(string(raw))
+	if blocks, ok := contentBlocks(raw); ok {
+		return blocks
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, raw); err != nil {
+		return []string{string(raw)}
+	}
+	return []string{compact.String()}
+}
+
+// contentBlocks returns the texts of an MCP content array or of a result object
+// holding one; ok is false for any other shape or when no text block exists.
+func contentBlocks(raw json.RawMessage) ([]string, bool) {
+	if texts := textBlocks(raw); len(texts) > 0 {
+		return texts, true
+	}
+	var result struct {
+		Content json.RawMessage `json:"content"`
+	}
+	if err := json.Unmarshal(raw, &result); err == nil && len(result.Content) > 0 {
+		if texts := textBlocks(result.Content); len(texts) > 0 {
+			return texts, true
+		}
+	}
+	return nil, false
+}
+
+// textBlocks returns the texts of an MCP content array; non-text blocks are skipped.
+func textBlocks(raw json.RawMessage) []string {
+	var blocks []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(raw, &blocks); err != nil {
+		return nil
+	}
+	var texts []string
+	for _, b := range blocks {
+		if b.Type == "" {
+			return nil
+		}
+		if b.Type == "text" {
+			texts = append(texts, b.Text)
+		}
+	}
+	return texts
+}
+
+// clipBlocks applies one byte budget across all blocks, cutting the last one kept.
+func clipBlocks(blocks []string, budget int) []string {
+	var out []string
+	for _, b := range blocks {
+		if budget <= 0 {
+			break
+		}
+		b = clip(b, budget)
+		budget -= len(b)
+		out = append(out, b)
+	}
+	return out
+}
+
+func allBlank(blocks []string) bool {
+	for _, b := range blocks {
+		if strings.TrimSpace(b) != "" {
+			return false
+		}
+	}
+	return true
+}
+
+// resultPayload is the MCP result envelope with one text entry per block.
+func resultPayload(blocks []string) map[string]any {
+	content := make([]any, 0, len(blocks))
+	for _, b := range blocks {
+		content = append(content, map[string]any{"type": "text", "text": b})
+	}
+	return map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"content": content}}
 }
 
 func applyVerdict(cfg Config, res *EvaluateResponse) verdict {
@@ -437,9 +515,13 @@ func hookAttributes(raw json.RawMessage) map[string]any {
 	return m
 }
 
+// clip cuts s to at most n bytes without splitting a UTF-8 rune.
 func clip(s string, n int) string {
 	if len(s) <= n {
 		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
 	}
 	return s[:n]
 }

@@ -264,19 +264,13 @@ func buildDevinEvaluateRequest(cfg Config, in devinInput, hookAttrs map[string]a
 		return base, true
 
 	case devinPostToolUse:
-		text := devinToolResponseText(in.ToolResponse)
-		if strings.TrimSpace(text) == "" {
+		blocks := clipBlocks(devinToolResponseBlocks(in.ToolResponse), cfg.MaxContentBytes)
+		if allBlank(blocks) {
 			return base, false
 		}
 		base.Direction = "output"
 		base.Protocol = "mcp"
-		base.Payload = map[string]any{
-			"jsonrpc": "2.0",
-			"id":      1,
-			"result": map[string]any{
-				"content": []any{map[string]any{"type": "text", "text": clip(text, cfg.MaxContentBytes)}},
-			},
-		}
+		base.Payload = resultPayload(blocks)
 		stampDevinTool(base.Attributes, in)
 		return base, true
 	}
@@ -318,24 +312,30 @@ func devinToolInputString(raw json.RawMessage, key string) string {
 	return ""
 }
 
-// devinToolResponseText is the evaluated text of a tool result: the output of
-// a structured response, a bare string as is, anything else as compact JSON so
-// structured results stay inspectable.
-func devinToolResponseText(raw json.RawMessage) string {
+// devinToolResponseBlocks is the evaluated text of a tool result. MCP content
+// is split into its blocks as TrustGate scores it; otherwise the output of a
+// structured response, a bare string as is, anything else as compact JSON.
+func devinToolResponseBlocks(raw json.RawMessage) []string {
 	if len(raw) == 0 || string(raw) == "null" {
-		return ""
+		return nil
+	}
+	if blocks, ok := contentBlocks(raw); ok {
+		return blocks
 	}
 	var asString string
 	if err := json.Unmarshal(raw, &asString); err == nil {
-		return asString
+		if blocks, ok := contentBlocks(json.RawMessage(strings.TrimSpace(asString))); ok {
+			return blocks
+		}
+		return []string{asString}
 	}
 	var structured devinToolResponse
 	if err := json.Unmarshal(raw, &structured); err == nil {
 		if text := strings.TrimSpace(structured.Output + "\n" + structured.Error); text != "" {
-			return text
+			return []string{text}
 		}
 	}
-	return strings.TrimSpace(string(raw))
+	return []string{strings.TrimSpace(string(raw))}
 }
 
 // answerDevin writes the verdict in the Devin contract and returns the exit
