@@ -180,7 +180,7 @@ If that happens the hook stops evaluating rather than misbehaving, and
 | Cascade event | TrustGuard protocol | Direction | Verdict |
 |---|---|---|---|
 | `pre_user_prompt` | `llm` | input | Block with exit 2 |
-| `pre_run_command` | `mcp` tools/call `run_command` with `{ "command": "<command>" }` | input | Block with exit 2. `tool.name` is `run_command`, `tool.command` the command line |
+| `pre_run_command` | `all`, `{ "input": "<command>" }` | input | Block with exit 2. `tool.name` is `run_command`, `tool.command` the command line |
 | `pre_mcp_tool_use` | `mcp` tools/call | input | Block with exit 2. `attributes.mcp.server` names the server |
 | `pre_write_code` | `mcp` tools/call `write_code` with `file_path` and `edits` | input | Block with exit 2 |
 | `pre_read_code` | `mcp` tools/call `read_code` with `file_path` | input | Block with exit 2 |

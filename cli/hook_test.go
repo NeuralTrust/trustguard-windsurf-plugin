@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -128,21 +127,6 @@ func TestPromptBlockExits2WithReason(t *testing.T) {
 	}
 }
 
-// runCommandArgs is params.arguments of the captured tools/call, which must be
-// named run_command.
-func runCommandArgs(t *testing.T, captured *map[string]any) map[string]any {
-	t.Helper()
-	payload := (*captured)["payload"].(map[string]any)
-	if payload["method"] != "tools/call" {
-		t.Fatalf("expected tools/call, got %v", payload)
-	}
-	params := payload["params"].(map[string]any)
-	if params["name"] != "run_command" {
-		t.Fatalf("expected params.name=run_command, got %v", params["name"])
-	}
-	return params["arguments"].(map[string]any)
-}
-
 // The command line travels in the payload and in attributes.tool.command, which
 // TrustGuard's conditions read; a third copy under attributes.windsurf would be
 // stored as sent and never masked by DLP.
@@ -150,8 +134,8 @@ func TestRunCommandKeepsTheCommandOutOfHookAttributes(t *testing.T) {
 	srv, captured := stubGuard(t, EvaluateResponse{Status: "allow"})
 	_ = invokeHook(t, testConfig(srv.URL), event("pre_run_command", map[string]any{"command_line": "echo 555-0100", "cwd": "/tmp/demo"}))
 
-	if got := runCommandArgs(t, captured)["command"]; got != "echo 555-0100" {
-		t.Fatalf("expected the command in the payload arguments, got %v", (*captured)["payload"])
+	if (*captured)["payload"].(map[string]any)["input"] != "echo 555-0100" {
+		t.Fatalf("expected the command in the payload, got %v", (*captured)["payload"])
 	}
 	if attr(t, captured, "tool")["command"] != "echo 555-0100" {
 		t.Fatalf("expected attributes.tool.command, got %v", (*captured)["attributes"])
@@ -159,21 +143,6 @@ func TestRunCommandKeepsTheCommandOutOfHookAttributes(t *testing.T) {
 	info, _ := attr(t, captured, "windsurf")["tool_info"].(map[string]any)
 	if _, ok := info["command_line"]; ok || info["cwd"] != "/tmp/demo" {
 		t.Fatalf("attributes.windsurf.tool_info = %v, want cwd and no command_line", info)
-	}
-}
-
-func TestRunCommandAsToolsCallKeepsToolAttributes(t *testing.T) {
-	srv, captured := stubGuard(t, EvaluateResponse{Status: "allow"})
-	_ = invokeHook(t, testConfig(srv.URL), event("pre_run_command", map[string]any{"command_line": "ls -la", "cwd": "/w"}))
-	if (*captured)["protocol"] != "mcp" || (*captured)["direction"] != "input" {
-		t.Fatalf("unexpected envelope: %v", *captured)
-	}
-	if args := runCommandArgs(t, captured); !reflect.DeepEqual(args, map[string]any{"command": "ls -la"}) {
-		t.Fatalf("arguments = %v", args)
-	}
-	tool := attr(t, captured, "tool")
-	if tool["name"] != "run_command" || tool["command"] != "ls -la" {
-		t.Fatalf("attributes.tool = %v", tool)
 	}
 }
 
@@ -212,10 +181,10 @@ func TestRunCommandBlock(t *testing.T) {
 	if res.code != exitBlock {
 		t.Fatalf("expected exit 2, got %d", res.code)
 	}
-	if (*captured)["protocol"] != "mcp" {
-		t.Fatalf("expected protocol=mcp, got %v", (*captured)["protocol"])
+	if (*captured)["protocol"] != "all" {
+		t.Fatalf("expected protocol=all, got %v", (*captured)["protocol"])
 	}
-	if runCommandArgs(t, captured)["command"] != "rm -rf /" {
+	if (*captured)["payload"].(map[string]any)["input"] != "rm -rf /" {
 		t.Fatalf("unexpected payload: %v", (*captured)["payload"])
 	}
 	tool := attr(t, captured, "tool")
