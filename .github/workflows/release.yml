@@ -15,7 +15,7 @@
 # summary. State comes from the repo, not from commit messages, so it works
 # with merge, squash or rebase.
 #
-# Manual run: Actions -> Release -> Run workflow.
+# Manual run, also to retry a failed publish: Actions -> Release -> Run workflow.
 
 name: Release
 

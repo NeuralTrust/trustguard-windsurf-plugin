@@ -1,4 +1,4 @@
-# Tests and vets the hook binary sources on every PR and push to main.
+# Tests and vets the hook binary sources on every pull request and push to main.
 
 name: CI
 
