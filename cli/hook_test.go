@@ -127,6 +127,25 @@ func TestPromptBlockExits2WithReason(t *testing.T) {
 	}
 }
 
+// The command line travels in the payload and in attributes.tool.command, which
+// TrustGuard's conditions read; a third copy under attributes.windsurf would be
+// stored as sent and never masked by DLP.
+func TestRunCommandKeepsTheCommandOutOfHookAttributes(t *testing.T) {
+	srv, captured := stubGuard(t, EvaluateResponse{Status: "allow"})
+	_ = invokeHook(t, testConfig(srv.URL), event("pre_run_command", map[string]any{"command_line": "echo 555-0100", "cwd": "/tmp/demo"}))
+
+	if (*captured)["payload"].(map[string]any)["input"] != "echo 555-0100" {
+		t.Fatalf("expected the command in the payload, got %v", (*captured)["payload"])
+	}
+	if attr(t, captured, "tool")["command"] != "echo 555-0100" {
+		t.Fatalf("expected attributes.tool.command, got %v", (*captured)["attributes"])
+	}
+	info, _ := attr(t, captured, "windsurf")["tool_info"].(map[string]any)
+	if _, ok := info["command_line"]; ok || info["cwd"] != "/tmp/demo" {
+		t.Fatalf("attributes.windsurf.tool_info = %v, want cwd and no command_line", info)
+	}
+}
+
 func TestPromptAllowIsSilent(t *testing.T) {
 	srv, _ := stubGuard(t, EvaluateResponse{Status: "allow"})
 	res := invokeHook(t, testConfig(srv.URL), event("pre_user_prompt", map[string]any{"user_prompt": "hello"}))

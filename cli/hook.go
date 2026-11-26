@@ -415,8 +415,10 @@ func stampMCPServer(attrs map[string]any, server string) {
 
 // contentFields are the tool_info fields that carry the evaluated content
 // itself. They travel in the payload, clipped; repeating them in attributes
-// would double the request and bypass the clip.
-var contentFields = []string{"user_prompt", "mcp_result", "mcp_tool_arguments", "edits", "response"}
+// would double the request and bypass the clip, and no detector reads
+// attributes, so DLP would never mask that copy. The command line also travels
+// in attributes.tool.command, which TrustGuard's conditions read.
+var contentFields = []string{"user_prompt", "command_line", "mcp_result", "mcp_tool_arguments", "edits", "response"}
 
 // hookAttributes is the stdin JSON as a map so every other field Cascade sent
 // (including ones this binary does not decode) travels in attributes.windsurf.
